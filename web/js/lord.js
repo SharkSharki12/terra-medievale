@@ -9,8 +9,8 @@ import { BUILDINGS } from './buildings.js';
 
 const MS = 0.1; // 1 m/s en cases par seconde
 // vitesses réelles (m/s) : [normal, rapide avec Maj]
-export const SPEEDS = { foot: [1.4, 3.6], horse: [4.2, 14], boat: [1.5, 5.5] };
-const ACCEL = { foot: 8, horse: 2.6, boat: 0.7 }; // m/s²
+export const SPEEDS = { foot: [6, 15], horse: [16, 40], boat: [10, 28] }; // m/s : rapide pour parcourir le monde
+const ACCEL = { foot: 40, horse: 18, boat: 8 }; // m/s²
 const MOUNT_NAMES = { foot: 'À pied', horse: 'À cheval', boat: 'En barque' };
 const DOCKS = { embarcadere: 1, pecheur: 1, port: 1 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -137,15 +137,22 @@ export class Lord {
     return !this.blockedByOthers(tx, ty);
   }
   ok(x, y) { return this.mount === 'boat' ? this.boatOK(x, y) : this.footOK(x, y); }
+  // une route (de ta ville ou de n'importe quel autre village, allié ou non)
+  onRoad(tx, ty) {
+    const k = key(tx, ty);
+    if (this.g.occ.get(k) === -1) return true;
+    for (const og of this.app.otherGames()) if (og.occ.get(k) === -1) return true;
+    return false;
+  }
   terrain(x, y) {
     if (this.mount === 'boat') return 1;
-    const c = this.g.nav.cost(Math.floor(x), Math.floor(y));
-    if (c === Infinity) return 0.3;
-    if (c < 0.9) return 1; // route
-    let f = Math.min(1, 1.05 / c);
-    if (this.mount === 'horse' && c > 2) f *= 0.75; // le cheval peine en forêt et dans les rochers
-    return f;
+    const tx = Math.floor(x), ty = Math.floor(y);
+    if (this.onRoad(tx, ty)) return 1.3; // bonus sur toutes les routes
+    const c = this.g.nav.cost(tx, ty);
+    if (c === Infinity || c < 0.9) return 1.1; // portes, ponts
+    return c > 2.6 ? 0.8 : c > 1.6 ? 0.9 : 1; // à peine ralenti hors des routes
   }
+
 
   // ---------- déplacement ----------
   update(dt, keys) {
@@ -188,7 +195,7 @@ export class Lord {
       const h = this.horse, dx = this.x + 0.8 - h.x, dy = this.y - h.y, d = Math.hypot(dx, dy);
       if (d < 1) this.horseCall = null;
       else {
-        const st = Math.min(d, 1.2 * dt); // ~12 m/s
+        const st = Math.min(d, 3 * dt); // ~30 m/s
         const nx = h.x + dx / d * st, ny = h.y + dy / d * st;
         if (this.footOK(nx, ny)) { h.x = nx; h.y = ny; h.dir = dx < 0 ? -1 : 1; h.ph = (h.ph || 0) + st * 4; }
         else { this.horseCall = null; app.ui.toast('Ton cheval ne trouve pas de passage jusqu\'à toi', 'bad'); }

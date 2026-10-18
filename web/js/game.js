@@ -659,7 +659,7 @@ export class Game {
 
     ctx.imageSmoothingEnabled = false;
     // routes (chemins, routes, rues pavées, ponts)
-    drawRoadNet(ctx, map, this.drawKeys || this.roads, (kk) => this.roadType.get(kk) || (this.occ.get(kk) > 0 && this.byId.get(this.occ.get(kk))?.type === 'porte' ? 2 : 0), (x, y) => isWater(this.app.map.getTile(x, y).g), this.view);
+    drawRoadNet(ctx, map, this.drawKeys || this.roads, (kk) => this.roadType.get(kk) || (this.occ.get(kk) > 0 && this.byId.get(this.occ.get(kk))?.type === 'porte' ? 2 : 0), (x, y) => this.app.map.getTile(x, y).g === G.RIVER, this.view);
     // aperçu de tracé (routes / remparts)
     if (this.drag && this.drag.path) {
       for (const [x, y, ok] of this.drag.path) {

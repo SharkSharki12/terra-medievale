@@ -42,7 +42,13 @@ function renderTiles(m) {
   }
   if (m.cleared) for (const c of m.cleared) {
     const i = c[0] - tx0 + 1, j = c[1] - ty0 + 1;
-    if (i >= 0 && j >= 0 && i < W && j < W) { tA[j * W + i] = 0; if (c[2] !== undefined) gA[j * W + i] = c[2]; }
+    if (i >= 0 && j >= 0 && i < W && j < W) {
+      const k = j * W + i;
+      tA[k] = 0;
+      if (c[2] !== undefined) gA[k] = c[2];
+      // une ville est toujours bâtie sur la terre ferme (remblai), sauf les ponts sur les rivières
+      else if (gA[k] <= 4 && gA[k] !== 3) { gA[k] = 14; hA[k] = 2; }
+    }
   }
   // ombrage du relief par case
   const sh = new Float32Array(W * W);

@@ -82,6 +82,7 @@ export class War {
       return null;
     }
     if (!t.online) return `${t.owner} n'est pas connecté`;
+    if (t.rel === 'alliance') return `${t.owner} est ton allié`;
     if (t.rel !== 'guerre') return `Tu dois d'abord déclarer la guerre à ${t.owner}`;
     if ((t.rank || 0) < 1) return `${t.name} est encore un hameau : protégé des attaques`;
     if (g.s.rank < 1) return 'Ta ville doit être au moins un village pour attaquer un joueur';
@@ -248,6 +249,14 @@ export class War {
     s.incoming = s.incoming.filter(x => x !== inc);
     let D = g.defensePower();
     const help = this.app.diplo && inc.kind === 'bot' ? this.app.diplo.alliesHelp() : { def: 0, names: [] };
+    if (this.app.mp.active) {
+      const m = this.myLatLon();
+      for (const o of this.app.mp.allies()) {
+        if (o.pid === inc.fid) continue;
+        const c = cityCenter(o.city);
+        if (c && haversine(m.lat, m.lon, c.lat, c.lon) < 400000) { help.def += (o.city.def || 0) * 0.35; help.names.push(o.name); }
+      }
+    }
     D += help.def;
     if (help.names.length) this.app.ui.toast(`🤝 Tes alliés (${help.names.slice(0, 3).join(', ')}) viennent défendre ${s.name} !`, 'big');
     const A = attackPower(inc.units);
@@ -456,8 +465,10 @@ export class War {
         for (const o of pl) {
           const t = this.target('player', o.pid);
           const rel = this.app.mp.relation(o.pid);
-          h += `<div class="war-tgt"><div><b style="color:${esc(o.color)}">${esc(o.name)}</b> — ${esc(o.city.name)}<br><small>${RANKS[t.rank].name} · ${t.pop} hab. · déf. ~${t.def} · ${Math.round(this.distKm(t))} km · ${rel === 'guerre' ? '<span class="atwar">en guerre</span>' : 'en paix'}${o.online ? '' : ' · absent'}</small></div><div class="wu-btns">`;
-          h += rel === 'guerre' ? `<button class="btn tiny" data-act="peace" data-pid="${esc(o.pid)}">Paix</button><button class="btn tiny red" data-act="attack" data-kind="player" data-id="${esc(o.pid)}">Attaquer</button>` : `<button class="btn tiny red" data-act="declare" data-pid="${esc(o.pid)}">Déclarer la guerre</button>`;
+          h += `<div class="war-tgt"><div><b style="color:${esc(o.color)}">${esc(o.name)}</b> — ${esc(o.city.name)}<br><small>${RANKS[t.rank].name} · ${t.pop} hab. · déf. ~${t.def} · ${Math.round(this.distKm(t))} km · ${rel === 'guerre' ? '<span class="atwar">en guerre</span>' : rel === 'alliance' ? '<span class="ally">allié</span>' : 'en paix'}${o.online ? '' : ' · absent'}</small></div><div class="wu-btns">`;
+          h += rel === 'guerre' ? `<button class="btn tiny" data-act="peace" data-pid="${esc(o.pid)}">Paix</button><button class="btn tiny red" data-act="attack" data-kind="player" data-id="${esc(o.pid)}">Attaquer</button>`
+            : rel === 'alliance' ? `<button class="btn tiny" data-act="unally" data-pid="${esc(o.pid)}">Rompre l'alliance</button>`
+            : `${o.online ? `<button class="btn tiny green" data-act="ally" data-pid="${esc(o.pid)}">Proposer une alliance</button>` : ''}<button class="btn tiny red" data-act="declare" data-pid="${esc(o.pid)}">Déclarer la guerre</button>`;
           h += '</div></div>';
         }
         h += '</div>';
@@ -500,6 +511,8 @@ export class War {
     else if (act === 'diplo') this.app.diplo.open(+b.dataset.id);
     else if (act === 'declare') this.app.mp.declareWar(b.dataset.pid);
     else if (act === 'peace') this.app.mp.askPeace(b.dataset.pid);
+    else if (act === 'ally') this.app.mp.proposeAlliance(b.dataset.pid);
+    else if (act === 'unally') this.app.mp.breakAlliance(b.dataset.pid);
   }
 
   openAttack(kind, id) {

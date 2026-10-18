@@ -40,6 +40,7 @@ export class UI {
       else if (b.dataset.act === 'lord') this.app.lord.toggle(true);
       else if (b.dataset.act === 'registry') this.openRegistry(b.dataset.tab || 'vivants');
       else if (b.dataset.act === 'diplo') this.app.diplo.open(+b.dataset.id);
+      else if (b.dataset.act === 'pally') this.app.mp.proposeAlliance(b.dataset.pid);
       else if (b.dataset.act === 'building' && g) { const bb = g.byId.get(+b.dataset.id); if (bb) { g.selected = bb; g.selPerson = 0; this.showInfo(bb); const B = BUILDINGS[bb.type]; this.app.map.flyTo(bb.x + B.w / 2, bb.y + B.h / 2 + 1, Math.max(this.app.map.z, 16 * this.app.map.dpr)); } }
     });
     $('#res-army-wrap') && $('#res-army-wrap').addEventListener('click', () => this.app.war.toggle());
@@ -233,8 +234,8 @@ export class UI {
       }
     } else if (rg.pid && this.app.game) {
       const rel = this.app.mp.relation(rg.pid);
-      h += line('Relation', rel === 'guerre' ? '<span class="atwar">en guerre</span>' : 'en paix');
-      h += `<div class="btns"><button class="btn small" data-act="warpanel">⚔ Guerre</button>${rel === 'guerre' ? `<button class="btn small red" data-act="attack" data-kind="player" data-id="${esc(rg.pid)}">Attaquer</button>` : ''}</div>`;
+      h += line('Relation', rel === 'guerre' ? '<span class="atwar">en guerre</span>' : rel === 'alliance' ? '<span class="ally">allié</span>' : 'en paix');
+      h += `<div class="btns"><button class="btn small" data-act="warpanel">⚔ Guerre</button>${rel === 'paix' ? `<button class="btn small green" data-act="pally" data-pid="${esc(rg.pid)}">🤝 Alliance</button>` : ''}${rel === 'guerre' ? `<button class="btn small red" data-act="attack" data-kind="player" data-id="${esc(rg.pid)}">Attaquer</button>` : ''}</div>`;
     }
     el.innerHTML = h; el.dataset.h = h;
     this.remoteShown = true;

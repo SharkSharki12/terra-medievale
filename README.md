@@ -9,6 +9,12 @@ automatique, mode multijoueur en ligne et des centaines de villages IA qui grand
 Prends `TerraMedievale.exe` dans la dernière [release](https://github.com/SharkSharki12/terra-medievale/releases/latest).
 Le jeu se met ensuite à jour tout seul (vérification toutes les 3 heures, ou Menu → Réglages → Vérifier).
 
+## Nouveautés de la version 3.1.1
+
+- Le terrain (côtes, rivières, forêts) est désormais identique pour tous les joueurs : les villes des autres sont bien sur la terre ferme, avec leurs routes.
+- Alliances entre joueurs en multijoueur (vos armées défendent la ville de l'autre).
+- Seigneur beaucoup plus rapide à pied, à cheval et en barque, sur toutes les routes (même celles des autres villages) et hors des routes.
+
 ## Nouveautés de la version 3.1
 
 - **Habitants simulés un par un** : nom, famille, date de naissance, maison, métier, mariage, enfants, maladies, mort.
@@ -27,10 +33,10 @@ Le jeu se met ensuite à jour tout seul (vérification toutes les 3 heures, ou M
 Il faut Go 1.24 et [rsrc](https://github.com/akavel/rsrc) (icône et manifeste Windows, déjà générés dans `rsrc_windows_amd64.syso`).
 
 ```sh
-tools/publier.sh 3.1.0 "Notes de version"
+tools/publier.sh 3.1.1 "Notes de version"
 ```
 
-produit `dist/TerraMedievale.exe` et `dist/latest.json`. Publie les deux fichiers dans une release `v3.1.0` :
+produit `dist/TerraMedievale.exe` et `dist/latest.json`. Publie les deux fichiers dans une release `v3.1.1` :
 les jeux déjà installés téléchargent `releases/latest/download/latest.json` pour trouver la nouvelle version.
 
 ## Organisation

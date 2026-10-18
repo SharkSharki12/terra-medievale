@@ -280,3 +280,4 @@ table.reg tr[data-pid]:hover { background: rgba(255,240,190,.8); }
 .relbar { height: 10px; background: rgba(0,0,0,.15); border-radius: 5px; overflow: hidden; margin: 8px 0 2px; }
 .relbar div { height: 100%; }
 .diplo-btns { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
+.ally-badge { font-size: 15px; margin-right: 4px; }

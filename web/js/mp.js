@@ -117,10 +117,11 @@ export class Multiplayer {
     const o = pid && this.others.get(pid);
     if (t === 'botev' && Array.isArray(d.events)) this.mergeWorld({ events: d.events });
     else if (t === 'war' && o) {
-      const st = d.state === 'guerre' ? 'guerre' : 'paix';
+      const st = d.state === 'guerre' ? 'guerre' : d.state === 'alliance' ? 'alliance' : 'paix';
       if (this.relations[o.pid] !== st) {
+        const was = this.relations[o.pid];
         this.relations[o.pid] = st;
-        const msg = st === 'guerre' ? `⚔ ${o.name} t'a déclaré la guerre !` : `🕊 La paix est conclue avec ${o.name}.`;
+        const msg = st === 'guerre' ? `⚔ ${o.name} t'a déclaré la guerre !` : st === 'alliance' ? `🤝 Tu es maintenant allié avec ${o.name} !` : was === 'alliance' ? `${o.name} a rompu votre alliance.` : `🕊 La paix est conclue avec ${o.name}.`;
         this.system(msg); this.app.ui.toast(msg, st === 'guerre' ? 'bad' : 'big');
         if (st === 'guerre') this.app.notify('Déclaration de guerre', msg);
         this.app.audio.play(st === 'guerre' ? 'bad' : 'reward');
@@ -130,6 +131,13 @@ export class Multiplayer {
       this.app.ui.modal(`<h2>Proposition de paix</h2><p><b style="color:${esc(o.color)}">${esc(o.name)}</b> te propose la paix.</p>`,
         [{ text: 'Refuser' }, { text: 'Accepter la paix', cls: 'green', fn: () => { this.relations[o.pid] = 'paix'; this.net.send('war', { state: 'paix' }, o.peer); this.system(`🕊 La paix est conclue avec ${o.name}.`); this.renderPlayers(); } }]);
     }
+    else if (t === 'ally?' && o) {
+      if (this.relations[o.pid] === 'alliance') return;
+      this.app.ui.modal(`<h2>Proposition d'alliance</h2><p><b style="color:${esc(o.color)}">${esc(o.name)}</b> te propose une alliance : vos armées défendront la ville de l'autre et vous ne pourrez plus vous attaquer.</p>`,
+        [{ text: 'Refuser', fn: () => this.net.send('ally-no', {}, o.peer) }, { text: 'Accepter l\'alliance', cls: 'green', fn: () => { this.relations[o.pid] = 'alliance'; this.net.send('war', { state: 'alliance' }, o.peer); this.system(`🤝 Alliance conclue avec ${o.name}.`); this.app.audio.play('reward'); this.renderPlayers(); this.app.war.render(true); } }]);
+      this.app.notify('Proposition d\'alliance', `${o.name} te propose une alliance`);
+    }
+    else if (t === 'ally-no' && o) { this.system(`${o.name} a refusé ton alliance.`); this.app.ui.toast(`${o.name} a refusé ton alliance.`, 'bad'); }
     else if (t === 'attack' && o) this.app.war.onAttack(o.pid, d, o);
     else if (t === 'battle' && o) this.app.war.onBattle(o.pid, d);
     else if (t === 'city') this.mergeCity(d);
@@ -192,10 +200,29 @@ export class Multiplayer {
   }
 
   relation(pid) { return this.relations[pid] || 'paix'; }
+  proposeAlliance(pid) {
+    const o = this.others.get(pid);
+    if (!o) return;
+    if (!o.online) { this.app.ui.toast(`${o.name} n'est pas connecté`, 'bad'); return; }
+    this.net.send('ally?', {}, o.peer);
+    this.system(`Tu proposes une alliance à ${o.name}…`);
+    this.app.ui.toast(`Proposition d'alliance envoyée à ${o.name}`);
+  }
+  breakAlliance(pid) {
+    const o = this.others.get(pid);
+    if (!o || this.relation(pid) !== 'alliance') return;
+    this.relations[pid] = 'paix';
+    this.net.send('war', { state: 'paix' }, o.peer);
+    this.system(`Tu romps ton alliance avec ${o.name}.`);
+    this.renderPlayers(); this.app.war.render(true);
+  }
+  // alliés en ligne : leur défense vient renforcer la tienne
+  allies() { return [...this.others.values()].filter(o => this.relation(o.pid) === 'alliance' && o.city); }
   declareWar(pid) {
     const o = this.others.get(pid);
     if (!o) return;
-    this.app.ui.modal(`<h2>Déclarer la guerre</h2><p>Déclarer la guerre à <b style="color:${esc(o.color)}">${esc(o.name)}</b> ? Vous pourrez vous attaquer mutuellement.</p>`,
+    const ally = this.relation(pid) === 'alliance';
+    this.app.ui.modal(`<h2>Déclarer la guerre</h2><p>${ally ? 'Rompre ton alliance et d' : 'D'}éclarer la guerre à <b style="color:${esc(o.color)}">${esc(o.name)}</b> ? Vous pourrez vous attaquer mutuellement.</p>`,
       [{ text: 'Annuler' }, { text: 'Déclarer la guerre', cls: 'red', fn: () => {
         this.relations[pid] = 'guerre';
         this.net.send('war', { state: 'guerre' }, o.peer);
@@ -236,6 +263,7 @@ export class Multiplayer {
       const pid = b.dataset.pid;
       if (b.dataset.act === 'see') this.app.goToRemote(pid);
       if (b.dataset.act === 'gift') this.openGift(pid);
+      if (b.dataset.act === 'ally') this.proposeAlliance(pid);
       if (b.dataset.act === 'war') this.app.war.toggle(true);
       if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(this.code).catch(() => { }); this.app.ui.toast(`Code ${this.code} copié`); }
     });
@@ -269,8 +297,8 @@ export class Multiplayer {
       const c = o.city;
       h += `<div class="pl ${o.online ? '' : 'off'}"><span class="dot" style="background:${esc(o.color)}"></span><div class="pl-txt"><b>${esc(o.name)}</b>${o.online ? '' : ' <small>(absent)</small>'}<br>
         <small>${c ? esc(c.name) + ' · ' + RANKS[c.rank || 0].name + ' · ' + (c.pop || 0) + ' hab.' : 'cherche où fonder sa ville'}</small></div>
-        ${this.relation(o.pid) === 'guerre' ? '<span class="atwar-badge" title="En guerre">⚔</span>' : ''}
-        <div class="pl-btns">${c ? `<button class="btn tiny" data-act="see" data-pid="${esc(o.pid)}">Voir</button>` : ''}${o.online && g ? `<button class="btn tiny" data-act="gift" data-pid="${esc(o.pid)}">Offrir</button>` : ''}${g && c ? `<button class="btn tiny" data-act="war" data-pid="${esc(o.pid)}">Guerre</button>` : ''}</div></div>`;
+        ${this.relation(o.pid) === 'guerre' ? '<span class="atwar-badge" title="En guerre">⚔</span>' : this.relation(o.pid) === 'alliance' ? '<span class="ally-badge" title="Allié">🤝</span>' : ''}
+        <div class="pl-btns">${c ? `<button class="btn tiny" data-act="see" data-pid="${esc(o.pid)}">Voir</button>` : ''}${o.online && g ? `<button class="btn tiny" data-act="gift" data-pid="${esc(o.pid)}">Offrir</button>` : ''}${o.online && g && this.relation(o.pid) === 'paix' ? `<button class="btn tiny green" data-act="ally" data-pid="${esc(o.pid)}">Alliance</button>` : ''}${g && c ? `<button class="btn tiny" data-act="war" data-pid="${esc(o.pid)}">Guerre</button>` : ''}</div></div>`;
     }
     if (!list.length) h += `<div class="mp-wait">En attente d'autres joueurs… Donne-leur le code <b>${esc(this.code)}</b> !</div>`;
     h += '</div>';

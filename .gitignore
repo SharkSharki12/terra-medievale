@@ -1,0 +1,4 @@
+# fichiers compilés (publiés dans les « releases » GitHub, pas dans le dépôt)
+dist/
+*.exe
+*.part

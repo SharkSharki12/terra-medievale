@@ -358,12 +358,14 @@ func showTrayMenu() {
 	defer procDestroyMenu.Call(m)
 	procAppendMenuW.Call(m, mfString, 1, uintptr(unsafe.Pointer(utf16("Ouvrir Terra Médiévale"))))
 	procAppendMenuW.Call(m, mfSeparator, 0, 0)
-	flags := uintptr(mfString)
-	if autostartEnabled() {
-		flags |= mfChecked
+	if !peamDistrib() {
+		flags := uintptr(mfString)
+		if autostartEnabled() {
+			flags |= mfChecked
+		}
+		procAppendMenuW.Call(m, flags, 2, uintptr(unsafe.Pointer(utf16("Lancer au démarrage de Windows"))))
+		procAppendMenuW.Call(m, mfSeparator, 0, 0)
 	}
-	procAppendMenuW.Call(m, flags, 2, uintptr(unsafe.Pointer(utf16("Lancer au démarrage de Windows"))))
-	procAppendMenuW.Call(m, mfSeparator, 0, 0)
 	procAppendMenuW.Call(m, mfString, 3, uintptr(unsafe.Pointer(utf16("Quitter"))))
 	procSetMenuDefaultItem.Call(m, 1, 0)
 	var pt point
@@ -426,7 +428,7 @@ func createTray() {
 // la croix de la fenêtre cache le jeu dans la zone de notification au lieu de le quitter
 func mainWndProc(hwnd, msg, wp, lp uintptr) uintptr {
 	if msg == wmClose && !quitting {
-		if nativeCfg.CloseToTray && trayAdded {
+		if nativeCfg.CloseToTray && trayAdded && !peamDistrib() {
 			theView.Eval("try{window.app&&window.app.writeSave()}catch(e){}")
 			hideMain()
 			return 0
@@ -550,10 +552,15 @@ func runUI(url string) {
 	_ = w.Bind("quitApp", func() { w.Dispatch(quitApp) })
 	_ = w.Bind("hideToTray", func() { w.Dispatch(hideMain) })
 	_ = w.Bind("trayNotify", func(title, text string) { trayNotify(title, text) })
-	_ = w.Bind("setAutostart", func(on bool) bool { return setAutostart(on) })
+	_ = w.Bind("setAutostart", func(on bool) bool {
+		if peamDistrib() {
+			return false
+		}
+		return setAutostart(on)
+	})
 	_ = w.Bind("setCloseToTray", func(on bool) { nativeCfg.CloseToTray = on; saveNativeCfg() })
 	_ = w.Bind("appInfo", func() map[string]any {
-		return map[string]any{"version": Version, "updateURL": effectiveUpdateURL(), "autostart": autostartEnabled(), "closeToTray": nativeCfg.CloseToTray, "background": background}
+		return map[string]any{"version": Version, "updateURL": effectiveUpdateURL(), "autostart": autostartEnabled(), "closeToTray": nativeCfg.CloseToTray && !peamDistrib(), "background": background, "peam": peamDistrib()}
 	})
 	onReady := func(info *updateInfo) {
 		b, _ := json.Marshal(map[string]string{"version": info.Version, "notes": info.Notes})

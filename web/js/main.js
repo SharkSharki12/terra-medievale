@@ -14,6 +14,7 @@ import { War } from './war.js';
 import { Lord, fmtDist } from './lord.js';
 import { Diplomacy } from './diplo.js';
 import { pathQueue } from './nav.js';
+import { Peam, ACH } from './peam.js';
 import { personSprite, horseSprite, boatSprite, drawAt, TOOLS, flushAtlas } from './actors.js';
 import { lookOf, M_NAMES, F_NAMES } from './people.js';
 
@@ -87,6 +88,7 @@ class App {
     this.war = new War(this);
     this.lord = new Lord(this);
     this.diplo = new Diplomacy(this);
+    this.peam = new Peam(this);
     this.botView = new BotView(this);
     this.crestURL = iconURL('manoir', 64);
     this.crestImg = new Image(); this.crestImg.src = this.crestURL;
@@ -120,6 +122,8 @@ class App {
     window.addEventListener('beforeunload', () => this.writeSave(true));
     setInterval(() => { if (this.game || this.mp.active) this.writeSave(); }, 20000);
     if (this.startHidden) this.ui.toast('Terra Médiévale tourne en arrière-plan.');
+    // lancé depuis une invitation d'un ami sur PEAM : on rejoint sa partie
+    this.peam.ready.then((i) => { if (i && i.active && i.join) setTimeout(() => this.peam.join(i.join), 800); });
   }
 
   refreshTitle() {
@@ -153,7 +157,7 @@ class App {
     const auto = info ? info.autostart : false, tray = info ? info.closeToTray : true;
     this.ui.modal(`<h2>Réglages</h2><div class="lobby">
       <div class="set-row"><span>Version</span><b>${esc(info ? info.version : 'navigateur')}</b></div>
-      ${info ? `<div class="set-row"><span>Mises à jour automatiques</span><b>${info.updateURL ? 'activées (vérifiées toutes les 3 h)' : 'pas encore de serveur de mise à jour'}</b></div>
+      ${info && info.peam ? '<div class="set-row"><span>Mises à jour</span><b>gérées par PEAM</b></div>' : info ? `<div class="set-row"><span>Mises à jour automatiques</span><b>${info.updateURL ? 'activées (vérifiées toutes les 3 h)' : 'pas encore de serveur de mise à jour'}</b></div>
       <div class="set-row"><label><input type="checkbox" id="st-auto" ${auto ? 'checked' : ''}> Lancer Terra Médiévale au démarrage de Windows (en arrière-plan)</label></div>
       <div class="set-row"><label><input type="checkbox" id="st-tray" ${tray ? 'checked' : ''}> La croix ✕ réduit le jeu dans la zone de notification (en bas à droite) au lieu de le quitter</label></div>
       ${info.updateURL ? '<div class="set-row"><button class="btn small" id="st-check">Vérifier les mises à jour maintenant</button><span id="st-msg"></span></div>' : ''}` : '<p class="hint">Ces réglages sont disponibles dans la version .exe.</p>'}
@@ -588,6 +592,7 @@ class App {
       this.map.cx = mm.x + 1.5; this.map.cy = mm.y + 4; this.map.z = 24 * this.map.dpr;
       this.setMode('map');
       this.ui.toast(`Bon retour à ${data.name} !`);
+      this.peam.ready.then(() => this.peam.restore(g));
     } catch (e) {
       console.error(e);
       this.ui.toast('Impossible de charger la ville', 'bad');
@@ -630,6 +635,7 @@ class App {
     const rooms = this.settings.rooms;
     if (rooms[0]) { rooms[0].host = 'localhost-host'; rooms[0].code = r.code || code; this.saveSettings(); }
     const ips = (r.ips || []).map(ip => `<div class="ipbox">${esc(ip)}</div>`).join('') || '<p>(adresse introuvable)</p>';
+    this.directAddr = r.ips && r.ips[0] ? (String(r.ips[0]).includes(':') ? String(r.ips[0]) : r.ips[0] + ':' + r.port) : null;
     this.ui.modal(`<h2>Serveur lancé</h2><p>Tes amis cliquent sur « Multijoueur en ligne », puis entrent cette adresse dans <b>Connexion directe</b> :</p>${ips}
       <p class="hint" style="font-size:13px">Même réseau (Wi-Fi/maison) : ça marche directement. Si Windows le demande, autorise l'accès au réseau.<br>
       Par Internet : ouvre le port TCP <b>${r.port}</b> sur ta box et donne ton IP publique, ou utilisez un VPN de jeu (ex. Radmin VPN).<br>
@@ -699,6 +705,7 @@ class App {
     if (!this.mp.active) { s.world = this.world || { seed: 1, bots: false, events: [] }; s.time = this.preClock; s.nextEvent = s.time + 150; }
     this.game = new Game(this, s, { region: this.region });
     this.game.pp.populateInitial(6, lordName, !!female, s.name);
+    this.peam.unlock(ACH.fondation);
     for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) this.map.invalidate(x + i, y + j);
     this.foundMode = false;
     $('#btn-found').textContent = 'Fonder ma ville ici';
@@ -751,6 +758,7 @@ class App {
     this.ui.modal(`<h2>Menu</h2><div class="menu-col">
       <button class="btn" id="m-resume">Reprendre</button>
       ${has || mp ? '<button class="btn" id="m-save">Sauvegarder</button>' : ''}
+      ${this.peam.active ? '<button class="btn green" id="m-invite">👥 Inviter des amis</button>' : ''}
       ${has ? '<button class="btn" id="m-war">⚔ Guerre, armée &amp; diplomatie</button><button class="btn" id="m-reg">📜 Registre des habitants</button><button class="btn" id="m-lord">👑 Incarner mon seigneur</button>' : ''}
       ${mp ? '<button class="btn" id="m-leave">Quitter la partie en ligne</button>' : '<button class="btn" id="m-mp">Multijoueur en ligne</button>'}
       <button class="btn" id="m-help">Aide &amp; commandes</button>
@@ -763,6 +771,7 @@ class App {
       const on = (id, f) => { const b = box.querySelector(id); if (b) b.onclick = f; };
       on('#m-save', () => { this.writeSave(); close(); this.ui.toast('Partie sauvegardée'); });
       on('#m-war', () => { close(); this.war.toggle(true); });
+      on('#m-invite', () => { close(); this.peam.openInvite(); });
       on('#m-reg', () => { close(); setTimeout(() => this.ui.openRegistry(), 30); });
       on('#m-lord', () => { close(); if (this.mode !== 'map') { this.goCity(); } else this.lord.toggle(true); });
       on('#m-leave', () => { close(); this.leaveMultiplayer(); });
@@ -998,6 +1007,7 @@ class App {
     if (t - this.lastUI > 250) {
       this.lastUI = t;
       if (this.game && this.mode === 'map') this.ui.update();
+      this.peam.tick();
       if (this.mode === 'map') this.checkReanchor();
     }
     if (t - this.lastMarkers > 700) { this.lastMarkers = t; if (this.mode !== 'map') this.updateMarkers(); }

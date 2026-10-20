@@ -21,7 +21,7 @@ import (
 
 // Version du jeu et adresse du fichier de mise à jour (modifiables à la compilation avec -ldflags -X)
 var (
-	Version   = "3.1.1"
+	Version   = "3.2.0"
 	UpdateURL = ""
 )
 

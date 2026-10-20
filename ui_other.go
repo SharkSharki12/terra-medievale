@@ -12,6 +12,8 @@ import (
 // Version de développement (hors Windows) : ouvre le jeu dans le navigateur.
 func fatal(msg string) { fmt.Fprintln(os.Stderr, msg) }
 
+func openBrowser(url string) { _ = exec.Command("xdg-open", url).Start() }
+
 func platformInit() bool { return true }
 
 func runUI(url string) {

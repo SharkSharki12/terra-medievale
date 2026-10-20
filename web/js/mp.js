@@ -121,6 +121,7 @@ export class Multiplayer {
       if (this.relations[o.pid] !== st) {
         const was = this.relations[o.pid];
         this.relations[o.pid] = st;
+        if (st === 'alliance') this.app.peam?.unlock('allie');
         const msg = st === 'guerre' ? `⚔ ${o.name} t'a déclaré la guerre !` : st === 'alliance' ? `🤝 Tu es maintenant allié avec ${o.name} !` : was === 'alliance' ? `${o.name} a rompu votre alliance.` : `🕊 La paix est conclue avec ${o.name}.`;
         this.system(msg); this.app.ui.toast(msg, st === 'guerre' ? 'bad' : 'big');
         if (st === 'guerre') this.app.notify('Déclaration de guerre', msg);
@@ -134,7 +135,7 @@ export class Multiplayer {
     else if (t === 'ally?' && o) {
       if (this.relations[o.pid] === 'alliance') return;
       this.app.ui.modal(`<h2>Proposition d'alliance</h2><p><b style="color:${esc(o.color)}">${esc(o.name)}</b> te propose une alliance : vos armées défendront la ville de l'autre et vous ne pourrez plus vous attaquer.</p>`,
-        [{ text: 'Refuser', fn: () => this.net.send('ally-no', {}, o.peer) }, { text: 'Accepter l\'alliance', cls: 'green', fn: () => { this.relations[o.pid] = 'alliance'; this.net.send('war', { state: 'alliance' }, o.peer); this.system(`🤝 Alliance conclue avec ${o.name}.`); this.app.audio.play('reward'); this.renderPlayers(); this.app.war.render(true); } }]);
+        [{ text: 'Refuser', fn: () => this.net.send('ally-no', {}, o.peer) }, { text: 'Accepter l\'alliance', cls: 'green', fn: () => { this.relations[o.pid] = 'alliance'; this.app.peam?.unlock('allie'); this.net.send('war', { state: 'alliance' }, o.peer); this.system(`🤝 Alliance conclue avec ${o.name}.`); this.app.audio.play('reward'); this.renderPlayers(); this.app.war.render(true); } }]);
       this.app.notify('Proposition d\'alliance', `${o.name} te propose une alliance`);
     }
     else if (t === 'ally-no' && o) { this.system(`${o.name} a refusé ton alliance.`); this.app.ui.toast(`${o.name} a refusé ton alliance.`, 'bad'); }
@@ -264,6 +265,7 @@ export class Multiplayer {
       if (b.dataset.act === 'see') this.app.goToRemote(pid);
       if (b.dataset.act === 'gift') this.openGift(pid);
       if (b.dataset.act === 'ally') this.proposeAlliance(pid);
+      if (b.dataset.act === 'peaminvite') this.app.peam.openInvite();
       if (b.dataset.act === 'war') this.app.war.toggle(true);
       if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(this.code).catch(() => { }); this.app.ui.toast(`Code ${this.code} copié`); }
     });
@@ -288,7 +290,7 @@ export class Multiplayer {
     if (!this.active) { el.innerHTML = ''; return; }
     const st = this.net.status === 'reconnecting' ? ' · reconnexion…' : '';
     const n = this.onlineCount();
-    let h = `<div class="mp-head"><b>Partie ${esc(this.code)}</b> <button class="btn tiny" data-act="copy" title="Copier le code">Copier</button>
+    let h = `<div class="mp-head"><b>Partie ${esc(this.code)}</b> <button class="btn tiny" data-act="copy" title="Copier le code">Copier</button>${this.app.peam && this.app.peam.active ? ' <button class="btn tiny green" data-act="peaminvite" title="Inviter des amis PEAM">👥 Inviter</button>' : ''}
       <div class="mp-sub">${this.mode === 'direct' ? 'Connexion directe' : 'En ligne'} · ${n + 1} joueur${n ? 's' : ''} connecté${n ? 's' : ''}${st}</div></div><div class="mp-list">`;
     const g = this.app.game;
     h += `<div class="pl"><span class="dot" style="background:${esc(this.me.color)}"></span><div class="pl-txt"><b>${esc(this.me.name)}</b> (toi)<br><small>${g ? esc(g.s.name) + ' · ' + RANKS[g.s.rank].name + ' · ' + g.s.pop + ' hab.' : 'pas encore de ville'}</small></div></div>`;

@@ -89,6 +89,8 @@ func startServer() (string, error) {
 	mux.HandleFunc("/api/kv/", func(w http.ResponseWriter, r *http.Request) {
 		handleKV(w, r, strings.TrimPrefix(r.URL.Path, "/api/kv/"))
 	})
+	mux.HandleFunc("/api/peam/info", handlePeamInfo)
+	mux.HandleFunc("/api/peam/call/", handlePeamCall)
 	mux.HandleFunc("/api/host", handleHost)
 	mux.HandleFunc("/api/host/", handleHost)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +109,9 @@ func startServer() (string, error) {
 }
 
 func main() {
+	if !peamLicenseOK() {
+		return
+	}
 	if !platformInit() {
 		return
 	}

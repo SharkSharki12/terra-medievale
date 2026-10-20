@@ -365,6 +365,7 @@ export class People {
     const msgDeath = `${this.lordTitleOf(old)} ${this.fullName(old)} est ${old.s ? 'morte' : 'mort'} ${CAUSES[cause] || ''}.`;
     if (!heir) { s.lordId = 0; this.chron(msgDeath + ' La ville n\'a plus de seigneur…', true); return; }
     s.lordId = heir.i;
+    this.g.app.peam?.unlock('succession');
     heir.w = 0; heir.m = heir.m && heir.aw ? heir.m : 0;
     const manor = this.g.manoir;
     if (manor && heir.h !== manor.id) this.moveFamily(heir, manor.id);
@@ -398,7 +399,7 @@ export class People {
     const starving = s.res.food <= 0.5;
     const unhappy = g.happy < 30 ? 1.3 : 1;
     const epi = s.epi && s.epi.until > t ? s.epi : null;
-    if (s.epi && !epi) { this.chron(`L'épidémie est terminée à ${s.name}.`); s.epi = null; }
+    if (s.epi && !epi) { this.chron(`L'épidémie est terminée à ${s.name}.`); s.epi = null; if (s.people.length) this.g.app.peam?.unlock('survivant-peste'); }
     const people = s.people.slice();
     for (const p of people) {
       if (!this.byId.has(p.i)) continue;

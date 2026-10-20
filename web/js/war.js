@@ -193,6 +193,7 @@ export class War {
         extra = ` ${t.name} devient ton vassal et te versera un tribut !`;
       }
       this.g.s.glory += 10 + t.rank * 10;
+      this.g.s.wins = (this.g.s.wins || 0) + 1;
       this.goBack(a, loot);
       this.report(`Victoire à ${t.name} ! Butin : ${fmtRes(loot)}.${extra}`, true);
     } else {
@@ -286,14 +287,14 @@ export class War {
       if (res.win) this.report(`${inc.fname} a pillé ${s.name} : -${fmtRes(loot)}. Pertes : ${fmtUnits(lost)}.`, false);
       else {
         const gold = 20 + countUnits(inc.units) * 2;
-        g.add({ gold }); s.glory += 5;
+        g.add({ gold }); s.glory += 5; s.wins = (s.wins || 0) + 1; this.app.peam?.unlock('forteresse');
         this.report(`Ta ville a repoussé l'attaque de ${inc.fname} ! +${gold} or. Pertes : ${fmtUnits(lost)}.`, true);
       }
     } else {
       const o = this.app.mp.others.get(inc.fid);
       this.app.mp.net.send('battle', { aid: inc.id, win: res.win, attLoss: res.attLoss, loot, city: s.name }, o && o.peer);
       if (res.win) this.report(`${inc.fname} (${inc.flord}) a pillé ${s.name} : -${fmtRes(loot)}. Pertes : ${fmtUnits(lost)}.`, false);
-      else { s.glory += 10; this.report(`Ta ville a repoussé l'armée de ${inc.flord} !`, true); }
+      else { s.glory += 10; s.wins = (s.wins || 0) + 1; this.app.peam?.unlock('forteresse'); this.report(`Ta ville a repoussé l'armée de ${inc.flord} !`, true); }
     }
   }
 
@@ -343,7 +344,7 @@ export class War {
     const loot = {}; for (const r of RES) { const v = Math.max(0, Math.min(100000, Math.floor(+d.loot?.[r] || 0))); if (v) loot[r] = v; }
     if (a.phase === 'go') a.arr = this.T;
     this.goBack(a, d.win ? loot : null);
-    if (d.win) { g.s.glory += 15; this.report(`Victoire contre ${a.tname} ! Butin : ${fmtRes(loot)}.`, true); }
+    if (d.win) { g.s.glory += 15; g.s.wins = (g.s.wins || 0) + 1; this.report(`Victoire contre ${a.tname} ! Butin : ${fmtRes(loot)}.`, true); }
     else this.report(`Ton armée a été repoussée à ${a.tname}. Survivants : ${fmtUnits(a.units)}.`, false);
   }
 

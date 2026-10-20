@@ -190,11 +190,11 @@ export class Diplomacy {
     const say = (t, cls = '') => { if (!expired || cls === 'bad') app.ui.toast(t, cls); if (g.pp) g.pp.chron(t); };
     switch (m.kind) {
       case 'alliance':
-        if (yes) { r.st = 'alliance'; r.since = T; this.change(b.id, 12); say(`🤝 Alliance conclue avec ${b.name} !`, 'big'); }
+        if (yes) { r.st = 'alliance'; r.since = T; this.change(b.id, 12); app.peam?.unlock('allie'); say(`🤝 Alliance conclue avec ${b.name} !`, 'big'); }
         else this.change(b.id, -8);
         break;
       case 'commerce':
-        if (yes) { r.trade = 1; this.change(b.id, 6); say(`Accord commercial signé avec ${b.name} : de l'or et de la nourriture arriveront régulièrement.`, 'big'); }
+        if (yes) { r.trade = 1; this.change(b.id, 6); app.peam?.unlock('marchand'); say(`Accord commercial signé avec ${b.name} : de l'or et de la nourriture arriveront régulièrement.`, 'big'); }
         else this.change(b.id, -3);
         break;
       case 'mariage':
@@ -235,7 +235,8 @@ export class Diplomacy {
     const r = this.rel(b.id);
     r.wed = 1;
     this.change(b.id, 25);
-    if (r.v >= 45 && r.st !== 'alliance') { r.st = 'alliance'; r.since = this.T; }
+    if (r.v >= 45 && r.st !== 'alliance') { r.st = 'alliance'; r.since = this.T; this.app.peam?.unlock('allie'); }
+    this.app.peam?.unlock('mariage-royal');
     const txt = `💍 Mariage de ${pp.fullName(k)} et ${n} ${fromPlace(b.name)} ! Dot : ${m.dowry} or.${r.st === 'alliance' ? ' Vos maisons sont désormais alliées.' : ''}`;
     pp.chron(txt, true);
     this.app.audio.play('reward');
@@ -281,13 +282,13 @@ export class Diplomacy {
       case 'alliance': {
         const need = b.temper === 'paisible' ? 30 : b.temper === 'neutre' ? 40 : 60;
         if (r.st === 'guerre') return reply(false, `${lord} refuse : vous êtes en guerre !`);
-        if (r.v >= need) { r.st = 'alliance'; r.since = T; this.change(id, 10); reply(true, `🤝 ${lord} accepte l'alliance avec ${g.s.name} !`); }
+        if (r.v >= need) { r.st = 'alliance'; r.since = T; this.change(id, 10); app.peam?.unlock('allie'); reply(true, `🤝 ${lord} accepte l'alliance avec ${g.s.name} !`); }
         else { this.change(id, -2); reply(false, `${lord} refuse ton alliance (opinion ${Math.round(r.v)} / ${need} requis). Offre-lui des présents.`); }
         break;
       }
       case 'trade':
         if (r.st === 'guerre') return reply(false, `${lord} refuse : vous êtes en guerre !`);
-        if (r.v >= 8) { r.trade = 1; this.change(id, 5); reply(true, `${b.name} signe un accord commercial avec ${g.s.name}.`); }
+        if (r.v >= 8) { r.trade = 1; this.change(id, 5); app.peam?.unlock('marchand'); reply(true, `${b.name} signe un accord commercial avec ${g.s.name}.`); }
         else { this.change(id, -1); reply(false, `${lord} ne te fait pas encore confiance (opinion ${Math.round(r.v)} / 8 requis).`); }
         break;
       case 'marry': {

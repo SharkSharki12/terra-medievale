@@ -186,6 +186,7 @@ export class Lord {
       if (moved) {
         this.ph += step * (this.mount === 'horse' ? 4 : this.mount === 'boat' ? 1.5 : 9);
         this.dist += step * 10;
+        g.s.lordKm = (g.s.lordKm || 0) + step / 100;
       }
       if (Math.abs(this.hx) > Math.abs(this.hy) * 0.6) { this.view = 2; this.dir = this.hx < 0 ? -1 : 1; } else this.view = this.hy < 0 ? 1 : 0;
       if (this.mount !== 'foot' && this.hx) this.dir = this.hx < 0 ? -1 : 1;
@@ -245,11 +246,13 @@ export class Lord {
       this.x = this.horse.x; this.y = this.horse.y; this.dir = this.horse.dir || this.dir;
       if (!this.footOK(this.x, this.y)) { this.x -= 0.5 * this.dir; }
       this.horse = null; this.mount = 'horse'; this.v = 0; this.horseCall = null;
+      app.peam?.unlock('cavalier');
       app.audio.play('coin');
       return;
     }
     if (this.boat && Math.hypot(this.boat.x - this.x, this.boat.y - this.y) < 2.5 && this.boatOK(this.boat.x, this.boat.y)) {
       this.x = this.boat.x; this.y = this.boat.y; this.boat = null; this.mount = 'boat'; this.v = 0;
+      app.peam?.unlock('marin');
       app.audio.play('click');
       return;
     }
@@ -257,6 +260,7 @@ export class Lord {
     if (dock) {
       if (this.boat) this.boat = null; // la barque est ramenée au ponton
       this.x = dock[0]; this.y = dock[1]; this.mount = 'boat'; this.v = 0;
+      app.peam?.unlock('marin');
       app.ui.toast('Tu prends une barque. Maj pour hisser la voile.');
       app.audio.play('click');
       return;

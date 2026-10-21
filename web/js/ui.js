@@ -228,6 +228,10 @@ export class UI {
       const t = this.app.war.target('bot', rg.bot.id);
       if (t) {
         h += line('Caractère', TEMPER_NAMES[t.temper]) + line('Armée (estimée)', `~${t.army}`) + line('Défense (estimée)', `~${t.def}`);
+        const W = this.app.bots, nm = (id) => { const o = W.byId.get(id); return o ? esc(o.name) : '?'; };
+        if (rg.bot.allies && rg.bot.allies.length) h += line('Alliés', rg.bot.allies.slice(0, 4).map(nm).join(', '));
+        if (t.st.overlord) h += line('Suzerain', esc(t.st.overlord.name));
+        if (t.st.lastWar && this.app.worldClock() - t.st.lastWar.t < 1800) { const w = t.st.lastWar; const foe = w.a === rg.bot.id ? w.d : w.a; h += line('Dernière guerre', `${w.a === rg.bot.id ? 'contre' : 'attaqué par'} ${nm(foe)} · ${(w.a === rg.bot.id) === w.win ? 'victoire' : 'défaite'}`); }
         if (t.vassal) h += line('Vassal de', `<span style="color:${esc(t.vassal.color)}">${esc(t.vassal.pid === this.app.settings.pid ? 'toi' : t.vassal.name)}</span>`);
         if (this.app.diplo && this.app.game) { const d = this.app.diplo.rel(t.id); h += line('Relation avec toi', `${this.app.diplo.statusName(d)} (${d.v > 0 ? '+' : ''}${Math.round(d.v)})`); }
         if (this.app.game) h += `<div class="btns"><button class="btn small" data-act="diplo" data-id="${t.id}">🕊 Diplomatie</button>${!(t.vassal && t.vassal.pid === this.app.settings.pid) ? `<button class="btn small red" data-act="attack" data-kind="bot" data-id="${t.id}">⚔ Attaquer</button>` : ''}</div>`;

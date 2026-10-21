@@ -24,10 +24,12 @@ export const EPOCH = 600;       // s : une « saison de campagne » entre seigne
 const NB_RANGE = 90000;         // m : rayon des voisins (guerres, alliances, routes)
 
 // population d'un bot sans tenir compte des guerres (croissance rapide)
+// croissance : rapide, encore plus forte avec des alliés (commerce entre seigneurs IA)
+export function growthOf(b, age) { return Math.min(b.maxPop, 10 + 6 * b.g * (b.allyMult || 1) * Math.pow(Math.max(0, age) / 60, 1.25)); }
 export function basePop(b, t) {
   const age = t - b.foundAt;
   if (age < 0) return 0;
-  return Math.min(b.maxPop, 8 + 3.2 * b.g * Math.pow(age / 60, 1.2));
+  return growthOf(b, age);
 }
 
 export class BotWorld {
@@ -62,7 +64,7 @@ export class BotWorld {
         lat: lat + (r() - 0.5) * 0.03, lon: lon + (r() - 0.5) * 0.03 / Math.max(0.2, Math.cos(lat * Math.PI / 180)),
         foundAt: r() < 0.5 ? r() * 90 : 90 + Math.pow(r(), 1.6) * 1800,
         g: 0.7 + r() * 0.8,
-        maxPop: Math.round((60 + Math.pow(r(), 1.8) * 1100) * (0.75 + 0.6 * bigCity)),
+        maxPop: Math.round((400 + Math.pow(r(), 1.5) * 6000) * (0.75 + 0.6 * bigCity)),
         mil: temper === 'paisible' ? 0.08 + r() * 0.07 : temper === 'neutre' ? 0.12 + r() * 0.1 : 0.2 + r() * 0.12,
         temper, female,
         lord: FIRST[female ? 20 + Math.floor(r() * 12) : Math.floor(r() * 20)],
@@ -93,6 +95,11 @@ export class BotWorld {
       b.nbd = near.slice(0, 8).map(x => x[0]);
     }
     for (const b of bots) for (const id of b.nb) this.byId.get(id).inc.push(b.id);
+    // alliances entre seigneurs IA : chaque allié voisin accélère la croissance (+20 %)
+    for (const b of bots) {
+      b.allies = b.nb.filter(id => this.allied(b, this.byId.get(id)));
+      b.allyMult = 1 + 0.2 * b.allies.length;
+    }
     this.cache = new Map(); this.wars = new Map(); this.hist = new Map();
     return this;
   }
@@ -197,9 +204,9 @@ export class BotWorld {
     }
     const age = T - b.foundAt - setback;
     if (age < 0 || b.absent) return { founded: false };
-    const pop = Math.round(Math.min(b.maxPop, 8 + 3.2 * b.g * Math.pow(age / 60, 1.2)));
+    const pop = Math.round(growthOf(b, age));
     const rank = rankOf(pop);
-    const base = Math.floor(pop * b.mil * Math.min(1, age / 700) + (age > 240 ? 2 : 0));
+    const base = Math.floor(Math.min(pop * b.mil, 30 + Math.sqrt(pop) * 6) * Math.min(1, age / 700) + (age > 240 ? 2 : 0));
     const army = Math.max(0, Math.round(base - loss));
     const ch = rank >= 2 ? Math.floor(army * 0.15) : 0, ar = rank >= 1 ? Math.floor(army * 0.3) : 0;
     const units = { soldat: army - ch - ar, archer: ar, chevalier: ch };
@@ -260,18 +267,18 @@ function needs(p, water) {
   return {
     maison: Math.ceil(Math.min(p, 100) / 5.5),
     grandemaison: p > 100 ? Math.ceil((p - 100) / 14) : 0,
-    ferme: Math.ceil(p / 22),
-    bucheron: 1 + Math.floor(p / 80),
-    carriere: p >= 14 ? 1 + Math.floor(p / 160) : 0,
-    puits: 1 + Math.floor(p / 80),
+    ferme: Math.min(36, Math.ceil(p / 22)),
+    bucheron: Math.min(8, 1 + Math.floor(p / 80)),
+    carriere: p >= 14 ? Math.min(5, 1 + Math.floor(p / 160)) : 0,
+    puits: Math.min(20, 1 + Math.floor(p / 80)),
     embarcadere: water && p >= 12 ? 1 : 0,
     caserne: p >= 18 ? 1 + Math.floor(p / 280) : 0,
-    pecheur: water && p >= 20 ? 1 + Math.floor(p / 220) : 0,
-    marche: p >= 28 ? 1 + Math.floor(p / 320) : 0,
-    cimetiere: p >= 30 ? 1 + Math.floor(p / 450) : 0,
-    bergerie: p >= 35 ? 1 + Math.floor(p / 300) : 0,
-    moulin: p >= 35 ? 1 + Math.floor(p / 120) : 0,
-    eglise: p >= 45 ? (p >= 420 ? 2 : 1) : 0,
+    pecheur: water && p >= 20 ? Math.min(6, 1 + Math.floor(p / 220)) : 0,
+    marche: p >= 28 ? Math.min(8, 1 + Math.floor(p / 320)) : 0,
+    cimetiere: p >= 30 ? Math.min(4, 1 + Math.floor(p / 450)) : 0,
+    bergerie: p >= 35 ? Math.min(8, 1 + Math.floor(p / 300)) : 0,
+    moulin: p >= 35 ? Math.min(12, 1 + Math.floor(p / 120)) : 0,
+    eglise: p >= 45 ? Math.min(6, 1 + Math.floor(p / 420)) : 0,
     taverne: p >= 55 ? 1 + Math.floor(p / 350) : 0,
     boulangerie: p >= 60 ? 1 + Math.floor(p / 250) : 0,
     archerie: p >= 60 ? 1 : 0,
@@ -394,7 +401,7 @@ export class BotPlanner {
   candidates(minD = 0) {
     if (!this.cand) {
       const c = [];
-      for (let j = -9; j <= 10; j++) for (let i = -9; i <= 9; i++) c.push([i, j, Math.hypot(i, (j - 0.5) * 1.05) + hash2(i, j, this.bot.seed % 1000) * 0.6]);
+      for (let j = -16; j <= 17; j++) for (let i = -16; i <= 16; i++) c.push([i, j, Math.hypot(i, (j - 0.5) * 1.05) + hash2(i, j, this.bot.seed % 1000) * 0.6]);
       c.sort((a, b) => a[2] - b[2]);
       this.cand = c;
     }

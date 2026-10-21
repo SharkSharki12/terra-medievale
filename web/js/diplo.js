@@ -356,6 +356,7 @@ export class Diplomacy {
       let h = `<h2>🕊 ${esc(b.name)}</h2><p><b style="color:${esc(b.color)}">${esc(this.title(b))}</b> · ${RANKS[st.rank].name} · ${st.pop} habitants · ${TEMPER_NAMES[b.temper]} · ~${km} km</p>`;
       h += `<div class="relbar"><div style="width:${pct}%;background:${r.v >= 0 ? '#4caf50' : '#c0392b'}"></div></div><p>Opinion de toi : <b>${Math.round(r.v)}</b> · ${this.statusName(r)}${r.wed ? ' · liés par un mariage' : ''}</p>`;
       if (st.overlord) h += `<p class="hint">Vassal de ${esc(st.overlord.name)}.</p>`;
+      if (b.allies && b.allies.length) h += `<p class="hint">Alliés : ${b.allies.slice(0, 5).map(i => esc(this.bot(i)?.name || '?')).join(', ')}.</p>`;
       if (st.lastWar && this.T - st.lastWar.t < 1800) { const w = st.lastWar, o = this.bot(w.a === b.id ? w.d : w.a); h += `<p class="hint">Récemment : ${w.a === b.id ? 'a attaqué' : 'attaqué par'} ${esc(o ? o.name : '?')} (${(w.a === b.id) === w.win ? 'victoire' : 'défaite'}).</p>`; }
       h += `<div class="diplo-btns">${btn('gift50', 'Offrir 50 or')}${btn('gift200', 'Offrir 200 or')}${btn('giftfood', 'Offrir 120 vivres')}`;
       if (r.st === 'guerre') h += btn('peace', 'Proposer la paix', 'green');

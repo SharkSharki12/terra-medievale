@@ -215,7 +215,7 @@ export class War {
       const p = (b.temper === 'belliqueux' ? 0.07 : b.temper === 'neutre' ? 0.018 : 0.03) * f;
       if (Math.random() > p) continue;
       const k = 0.4 + Math.random() * 0.4;
-      const units = scaleUnits(st.units, k);
+      const units = this.capRaid(scaleUnits(st.units, k));
       if (countUnits(units) < 3) continue;
       const dur = Math.max(70, this.travel(d / 1000));
       const inc = { id: 'r' + Date.now().toString(36), kind: 'bot', fid: b.id, fname: b.name, flord: app.bots.title(b, st.rank), units, arr: T + dur, from: { lat: b.lat, lon: b.lon }, to: m, color: b.color, dep: T };
@@ -230,13 +230,19 @@ export class War {
     }
   }
 
+  // les grandes villes IA n'envoient pas d'armées impossibles à repousser : un raid reste à ta mesure
+  capRaid(units) {
+    const A = attackPower(units), maxA = this.g.defensePower() * 1.15 + 8;
+    return A > maxA ? scaleUnits(units, maxA / A) : units;
+  }
+
   // raid immédiat d'un seigneur IA (refus de tribut, guerre déclarée)
   forceRaid(b) {
     const app = this.app, g = this.g, s = g.s, T = this.T;
     if (!app.bots || s.incoming.some(i => i.kind === 'bot' && i.fid === b.id)) return;
     const st = app.bots.state(b, T);
     if (!st.founded) return;
-    const units = scaleUnits(st.units, 0.6);
+    const units = this.capRaid(scaleUnits(st.units, 0.6));
     if (countUnits(units) < 2) return;
     const m = this.myLatLon();
     const d = haversine(m.lat, m.lon, b.lat, b.lon);

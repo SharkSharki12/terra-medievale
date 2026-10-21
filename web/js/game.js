@@ -535,12 +535,13 @@ export class Game {
     let sum = 0;
     for (const b of s.buildings) sum += BUILDINGS[b.type].happy || 0;
     if (this.feast > 0) { this.feast -= dt; sum += 25; }
-    let H = 50 + 45 * (1 - Math.exp(-sum / 30)) - s.pop * 0.045 + (s.rank === 0 ? 10 : 0);
-    if (s.res.food <= 0.5) H -= 15;
+    // bonheur facile : chaque bâtiment de loisir compte beaucoup, et la taille de la ville ne pèse presque plus
+    let H = 72 + 28 * (1 - Math.exp(-sum / 8)) - Math.min(6, s.pop * 0.002) + (s.rank === 0 ? 8 : 0);
+    if (s.res.food <= 0.5) H -= 10;
     const mourning = (s.recentDeaths || []).length;
-    if (mourning && !this.count('cimetiere')) H -= Math.min(10, mourning * 0.7);
-    if (s.epi && s.epi.until > s.time) H -= 8;
-    this.happy = Math.max(5, Math.min(100, H));
+    if (mourning && !this.count('cimetiere')) H -= Math.min(3, mourning * 0.2);
+    if (s.epi && s.epi.until > s.time) H -= 3;
+    this.happy = Math.max(s.res.food > 0.5 ? 70 : 45, Math.min(100, H));
     // habitants : naissances, décès, mariages, emplois, immigration
     if (this.pp) {
       this.pp.step(dt);

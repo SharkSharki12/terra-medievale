@@ -38,10 +38,10 @@ Le jeu se met ensuite à jour tout seul (vérification toutes les 3 heures, ou M
 Il faut Go 1.24 et [rsrc](https://github.com/akavel/rsrc) (icône et manifeste Windows, déjà générés dans `rsrc_windows_amd64.syso`).
 
 ```sh
-tools/publier.sh 3.2.0 "Notes de version"
+tools/publier.sh 3.2.1 "Notes de version"
 ```
 
-produit `dist/TerraMedievale.exe` et `dist/latest.json`. Publie les deux fichiers dans une release `v3.2.0` :
+produit `dist/TerraMedievale.exe` et `dist/latest.json`. Publie les deux fichiers dans une release `v3.2.1` :
 les jeux déjà installés téléchargent `releases/latest/download/latest.json` pour trouver la nouvelle version.
 
 ## Organisation
